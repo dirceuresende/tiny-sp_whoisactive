@@ -11,3 +11,5 @@ Com o objetivo de prover uma solução parecida com a sp_WhoIsActive, mas que fo
 <li>Caso a sessão seja de um job, mostra o nome do job na coluna program_name</li>
 <li>Retorna o XML do plano de execução (a sp_WhoIsActive também mostra se utilizado o parâmetro @get_plans = 1)</li>
 </ul>
+
+Veja mais sobre essa SP também no meu artigo sobre ela, acessando o link <a href='http://www.dirceuresende.com/blog/sql-server-query-para-retornar-as-sessoes-ativas-sp_whoisactive-sem-consumir-tempdb/'>SQL Server - Query para retornar as consultas em execução (sp_WhoIsActive sem consumir TempDB)</a>
