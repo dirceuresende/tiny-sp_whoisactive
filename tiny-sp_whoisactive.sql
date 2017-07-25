@@ -77,8 +77,9 @@ FROM
             session_id,
             request_id
     ) F ON B.session_id = F.session_id AND B.request_id = F.request_id
-    OUTER APPLY sys.dm_exec_sql_text(B.[sql_handle]) AS X
-    OUTER APPLY sys.dm_exec_query_plan(B.plan_handle) AS W
+    LEFT JOIN sys.sysprocesses AS G WITH(NOLOCK) ON A.session_id = G.spid
+    OUTER APPLY sys.dm_exec_sql_text(COALESCE(B.[sql_handle], G.[sql_handle])) AS X
+    OUTER APPLY sys.dm_exec_query_plan(COALESCE(B.[sql_handle], G.[sql_handle])) AS W
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
