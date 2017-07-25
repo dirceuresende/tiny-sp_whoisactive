@@ -36,7 +36,7 @@ SELECT
         WHEN B.[deadlock_priority] >= 5 THEN 'High'
     END) + ' (' + CAST(B.[deadlock_priority] AS VARCHAR(3)) + ')' AS [deadlock_priority],
     B.row_count,
-    COALESCE(B.open_transaction_count, 0) AS open_transaction_count,
+    COALESCE(A.open_transaction_count, 0) AS open_tran_count,
     (CASE B.transaction_isolation_level
         WHEN 0 THEN 'Unspecified' 
         WHEN 1 THEN 'ReadUncommitted' 
@@ -82,6 +82,6 @@ FROM
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
-    AND A.[status] != 'sleeping'
+    AND (A.[status] != 'sleeping' OR (A.[status] = 'sleeping' AND A.open_transaction_count > 0))
 ORDER BY
     COALESCE(B.start_time, A.login_time)
