@@ -41,3 +41,5 @@ WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
     AND A.[status] != 'sleeping'
+ORDER BY
+    COALESCE(B.start_time, A.login_time)
