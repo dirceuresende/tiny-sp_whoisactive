@@ -18,6 +18,7 @@ SELECT
     FORMAT(COALESCE(B.logical_reads, 0), '###,###,###,###,###,###,###,##0') AS reads,
     FORMAT(COALESCE(B.writes, 0), '###,###,###,###,###,###,###,##0') AS writes,
     FORMAT(COALESCE(B.reads, 0), '###,###,###,###,###,###,###,##0') AS physical_reads,
+    FORMAT(COALESCE(B.granted_query_memory, 0), '###,###,###,###,###,###,###,##0') AS used_memory,
     NULLIF(B.blocking_session_id, 0) AS blocking_session_id,
     B.[deadlock_priority],
     COALESCE(B.open_transaction_count, 0) AS open_transaction_count,
