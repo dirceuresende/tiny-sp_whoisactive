@@ -1,17 +1,17 @@
 SELECT
-    RIGHT('00' + CAST(DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE())  86400 AS VARCHAR), 2) + ' ' + RIGHT('00' + CAST((DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE())  3600) % 24 AS VARCHAR), 2) + '' + RIGHT('00' + CAST((DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE())  60) % 60 AS VARCHAR), 2) + '' + RIGHT('00' + CAST(DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE()) % 60 AS VARCHAR), 2) + '.' + RIGHT('000' + CAST(DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE()) AS VARCHAR), 3) AS Duration,
+    RIGHT('00' + CAST(DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE()) / 86400 AS VARCHAR), 2) + ' ' + RIGHT('00' + CAST((DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE()) / 3600) % 24 AS VARCHAR), 2) + ':' + RIGHT('00' + CAST((DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE()) / 60) % 60 AS VARCHAR), 2) + ':' + RIGHT('00' + CAST(DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE()) % 60 AS VARCHAR), 2) + '.' + RIGHT('000' + CAST(DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE()) AS VARCHAR), 3) AS Duration,
     A.session_id AS session_id,
     B.command,
-    CAST('query --' + CHAR(10) + (
-        SELECT TOP 1 SUBSTRING(X.[text], B.statement_start_offset  2 + 1, ((CASE
-                                                                          WHEN B.statement_end_offset = -1 THEN (LEN(CONVERT(NVARCHAR(MAX), X.[text]))  2)
+    CAST('<?query --' + CHAR(10) + (
+        SELECT TOP 1 SUBSTRING(X.[text], B.statement_start_offset / 2 + 1, ((CASE
+                                                                          WHEN B.statement_end_offset = -1 THEN (LEN(CONVERT(NVARCHAR(MAX), X.[text])) * 2)
                                                                           ELSE B.statement_end_offset
                                                                       END
                                                                      ) - B.statement_start_offset
-                                                                    )  2 + 1
+                                                                    ) / 2 + 1
                      )
-    ) + CHAR(10) + '--' AS XML) AS sql_text,
-    CAST('query --' + CHAR(10) + X.[text] + CHAR(10) + '--' AS XML) AS sql_command,
+    ) + CHAR(10) + '--?>' AS XML) AS sql_text,
+    CAST('<?query --' + CHAR(10) + X.[text] + CHAR(10) + '--?>' AS XML) AS sql_command,
     A.login_name,
     '(' + CAST(B.wait_time AS VARCHAR(20)) + 'ms) ' + COALESCE(B.wait_type, B.last_wait_type) AS wait_info,
     FORMAT(COALESCE(B.cpu_time, 0), '###,###,###,###,###,###,###,##0') AS CPU,
@@ -38,6 +38,6 @@ FROM
     OUTER APPLY sys.dm_exec_sql_text(B.[sql_handle]) AS X
     OUTER APPLY sys.dm_exec_query_plan(B.plan_handle) AS W
 WHERE
-    A.session_id  50
-    AND A.session_id  @@SPID
+    A.session_id > 50
+    AND A.session_id <> @@SPID
     AND A.[status] != 'sleeping'
