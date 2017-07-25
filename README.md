@@ -7,7 +7,7 @@ Com o objetivo de prover uma solução parecida com a sp_WhoIsActive, mas que fo
 <li>Não utiliza a TempDB</li>
 <li>Execução mais rápida</li>
 <li>Código mais simples de entender</li>
-<li>Não possui informações sobre utilização de TempDB ou memória da query, pois iria aumentar consideravelmente a complexidade do código e a utilização de tempdb</li>
+<li>Não possui informações sobre utilização de TempDB, pois iria aumentar consideravelmente a complexidade do código e a utilização de tempdb</li>
 <li>Pode ser facilmente utilizada como view, table-valued function ou scalar function, permitindo utilizar order by, select into, where, etc.</li>
 <li>Além de mostrar a query em execução, mostra também o Outer Command (a sp_WhoIsActive também mostra se utilizado o parâmetro @get_outer_command = 1)</li>
 <li>Caso a sessão seja de um job, mostra o nome do job na coluna program_name</li>
