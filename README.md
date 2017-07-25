@@ -1,37 +1,13 @@
-## Welcome to GitHub Pages
+Com o objetivo de prover uma solução parecida com a sp_WhoIsActive, mas que fosse mais leve e não utilizasse a TempDB, permitindo que ela seja executada rapidamente mesmo em cenários como o citado acima, eu e o <a href="https://www.tiagoneves.net/blog/">Tiago Neves</a> criamos essa versão mais "enxuta", retornado as principais informações e sem utilizar os diversos parâmetros que a SP original nos fornece.
 
-You can use the [editor on GitHub](https://github.com/dirceuresende/tiny-sp_whoisactive/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
-
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
-
-### Markdown
-
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/dirceuresende/tiny-sp_whoisactive/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+<h2>Qual a diferença para a sp_WhoIsActive?</h2>
+<ul>
+<li>Não utiliza a TempDB</li>
+<li>Execução mais rápida</li>
+<li>Código mais simples de entender</li>
+<li>Não possui informações sobre utilização de TempDB ou memória da query, pois iria aumentar consideravelmente a complexidade do código e a utilização de tempdb</li>
+<li>Pode ser facilmente utilizada como view, table-valued function ou scalar function, permitindo utilizar order by, select into, where, etc.</li>
+<li>Além de mostrar a query em execução, mostra também o Outer Command (a sp_WhoIsActive também mostra se utilizado o parâmetro @get_outer_command = 1)</li>
+<li>Caso a sessão seja de um job, mostra o nome do job na coluna program_name</li>
+<li>Retorna o XML do plano de execução (a sp_WhoIsActive também mostra se utilizado o parâmetro @get_plans = 1)</li>
+</ul>
