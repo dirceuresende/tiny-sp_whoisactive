@@ -20,7 +20,8 @@ SELECT
     A.login_name,
     '(' + CAST(B.wait_time AS VARCHAR(20)) + 'ms)' + COALESCE(B.wait_type, B.last_wait_type) + COALESCE((CASE 
         WHEN E.wait_type LIKE 'PAGEIOLATCH%' THEN ':' + DB_NAME(LEFT(E.resource_description, CHARINDEX(':', E.resource_description) - 1)) + ':' + SUBSTRING(E.resource_description, CHARINDEX(':', E.resource_description) + 1, 999)
-        ELSE E.resource_description 
+        WHEN E.wait_type = 'OLEDB' THEN '[' + REPLACE(REPLACE(E.resource_description, ' (SPID=', ':'), ')', '') + ']'
+        ELSE ''
     END), '') AS wait_info,
     FORMAT(COALESCE(B.cpu_time, 0), '###,###,###,###,###,###,###,##0') AS CPU,
     FORMAT(COALESCE(F.tempdb_allocations, 0), '###,###,###,###,###,###,###,##0') AS tempdb_allocations,
@@ -69,7 +70,6 @@ FROM
             sys.dm_os_waiting_tasks
         WHERE
             resource_description IS NOT NULL
-            AND wait_type LIKE 'PAGEIO%'
         GROUP BY 
             session_id, 
             wait_type
