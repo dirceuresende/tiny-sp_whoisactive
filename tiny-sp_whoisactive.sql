@@ -30,6 +30,7 @@ SELECT
     FORMAT(COALESCE(B.reads, 0), '###,###,###,###,###,###,###,##0') AS physical_reads,
     FORMAT(COALESCE(B.granted_query_memory, 0), '###,###,###,###,###,###,###,##0') AS used_memory,
     NULLIF(B.blocking_session_id, 0) AS blocking_session_id,
+    COALESCE(G.blocked_session_count, 0) AS blocked_session_count,
     (CASE 
         WHEN B.[deadlock_priority] <= -5 THEN 'Low'
         WHEN B.[deadlock_priority] > -5 AND B.[deadlock_priority] < 5 AND B.[deadlock_priority] < 5 THEN 'Normal'
@@ -58,12 +59,20 @@ FROM
     sys.dm_exec_sessions AS A WITH (NOLOCK)
     LEFT JOIN sys.dm_exec_requests AS B WITH (NOLOCK) ON A.session_id = B.session_id
     JOIN sys.dm_exec_connections AS C WITH (NOLOCK) ON A.session_id = C.session_id AND A.endpoint_id = C.endpoint_id
-    LEFT JOIN msdb.dbo.sysjobs AS D WITH(NOLOCK) ON RIGHT(D.job_id, 10) = RIGHT(SUBSTRING(A.[program_name], 30, 34), 10)
+    LEFT JOIN msdb.dbo.sysjobs AS D ON RIGHT(D.job_id, 10) = RIGHT(SUBSTRING(A.[program_name], 30, 34), 10)
     LEFT JOIN (
-        SELECT DISTINCT session_id, resource_description, wait_type
-        FROM sys.dm_os_waiting_tasks WITH(NOLOCK)
-        WHERE resource_description IS NOT NULL
-        AND wait_type LIKE 'PAGEIO%'
+        SELECT
+            session_id, 
+            wait_type, 
+            MAX(resource_description) AS resource_description
+        FROM 
+            sys.dm_os_waiting_tasks
+        WHERE
+            resource_description IS NOT NULL
+            AND wait_type LIKE 'PAGEIO%'
+        GROUP BY 
+            session_id, 
+            wait_type
     ) E ON A.session_id = E.session_id
     LEFT JOIN (
         SELECT
@@ -72,16 +81,25 @@ FROM
             SUM(internal_objects_alloc_page_count + user_objects_alloc_page_count) AS tempdb_allocations,
             SUM(internal_objects_dealloc_page_count + user_objects_dealloc_page_count) AS tempdb_current
         FROM
-            sys.dm_db_task_space_usage WITH(NOLOCK)
+            sys.dm_db_task_space_usage
         GROUP BY
             session_id,
             request_id
     ) F ON B.session_id = F.session_id AND B.request_id = F.request_id
+    LEFT JOIN (
+        SELECT 
+            blocking_session_id,
+            COUNT(*) AS blocked_session_count
+        FROM 
+            sys.dm_exec_requests
+        WHERE 
+            blocking_session_id != 0
+        GROUP BY
+            blocking_session_id
+    ) G ON A.session_id = G.blocking_session_id
     OUTER APPLY sys.dm_exec_sql_text(COALESCE(B.[sql_handle], C.most_recent_sql_handle)) AS X
     OUTER APPLY sys.dm_exec_query_plan(COALESCE(B.[sql_handle], C.most_recent_sql_handle)) AS W
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
     AND (A.[status] != 'sleeping' OR (A.[status] = 'sleeping' AND A.open_transaction_count > 0))
-ORDER BY
-    COALESCE(B.start_time, A.login_time)
