@@ -18,9 +18,9 @@ SELECT
     ) + CHAR(10) + '--?>' AS XML) AS sql_text,
     TRY_CAST('<?query --' + CHAR(10) + X.[text] + CHAR(10) + '--?>' AS XML) AS sql_command,
     A.login_name,
-    '(' + CAST(B.wait_time AS VARCHAR(20)) + 'ms)' + COALESCE(B.wait_type, B.last_wait_type) + COALESCE((CASE 
-        WHEN E.wait_type LIKE 'PAGEIOLATCH%' THEN ':' + DB_NAME(LEFT(E.resource_description, CHARINDEX(':', E.resource_description) - 1)) + ':' + SUBSTRING(E.resource_description, CHARINDEX(':', E.resource_description) + 1, 999)
-        WHEN E.wait_type = 'OLEDB' THEN '[' + REPLACE(REPLACE(E.resource_description, ' (SPID=', ':'), ')', '') + ']'
+    '(' + CAST(COALESCE(E.wait_duration_ms, B.wait_time) AS VARCHAR(20)) + 'ms)' + COALESCE(E.wait_type, B.wait_type, B.last_wait_type) + COALESCE((CASE 
+        WHEN COALESCE(E.wait_type, B.wait_type, B.last_wait_type) LIKE 'PAGEIOLATCH%' THEN ':' + DB_NAME(LEFT(E.resource_description, CHARINDEX(':', E.resource_description) - 1)) + ':' + SUBSTRING(E.resource_description, CHARINDEX(':', E.resource_description) + 1, 999)
+        WHEN COALESCE(E.wait_type, B.wait_type, B.last_wait_type) = 'OLEDB' THEN '[' + REPLACE(REPLACE(E.resource_description, ' (SPID=', ':'), ')', '') + ']'
         ELSE ''
     END), '') AS wait_info,
     FORMAT(COALESCE(B.cpu_time, 0), '###,###,###,###,###,###,###,##0') AS CPU,
@@ -64,13 +64,12 @@ FROM
     LEFT JOIN (
         SELECT
             session_id, 
-            wait_type, 
+            wait_type,
+			wait_duration_ms,
             resource_description,
-			ROW_NUMBER() OVER(PARTITION BY session_id ORDER BY (CASE WHEN wait_type LIKE 'PAGEIO%' THEN 1 ELSE 0 END), wait_duration_ms DESC) AS Ranking
+			ROW_NUMBER() OVER(PARTITION BY session_id ORDER BY (CASE WHEN wait_type LIKE 'PAGEIO%' THEN 0 ELSE 1 END), wait_duration_ms DESC) AS Ranking
         FROM 
             sys.dm_os_waiting_tasks
-        WHERE
-            resource_description IS NOT NULL
     ) E ON A.session_id = E.session_id AND E.Ranking = 1
     LEFT JOIN (
         SELECT
