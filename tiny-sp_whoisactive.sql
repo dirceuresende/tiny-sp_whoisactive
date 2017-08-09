@@ -7,7 +7,7 @@ SELECT
     AS Duration,
     A.session_id AS session_id,
     B.command,
-    CAST('<?query --' + CHAR(10) + (
+    TRY_CAST('<?query --' + CHAR(10) + (
         SELECT TOP 1 SUBSTRING(X.[text], B.statement_start_offset / 2 + 1, ((CASE
                                                                           WHEN B.statement_end_offset = -1 THEN (LEN(CONVERT(NVARCHAR(MAX), X.[text])) * 2)
                                                                           ELSE B.statement_end_offset
@@ -16,7 +16,7 @@ SELECT
                                                                     ) / 2 + 1
                      )
     ) + CHAR(10) + '--?>' AS XML) AS sql_text,
-    CAST('<?query --' + CHAR(10) + X.[text] + CHAR(10) + '--?>' AS XML) AS sql_command,
+    TRY_CAST('<?query --' + CHAR(10) + X.[text] + CHAR(10) + '--?>' AS XML) AS sql_command,
     A.login_name,
     '(' + CAST(B.wait_time AS VARCHAR(20)) + 'ms)' + COALESCE(B.wait_type, B.last_wait_type) + COALESCE((CASE 
         WHEN E.wait_type LIKE 'PAGEIOLATCH%' THEN ':' + DB_NAME(LEFT(E.resource_description, CHARINDEX(':', E.resource_description) - 1)) + ':' + SUBSTRING(E.resource_description, CHARINDEX(':', E.resource_description) + 1, 999)
@@ -51,7 +51,7 @@ SELECT
     NULLIF(B.percent_complete, 0) AS percent_complete,
     A.[host_name],
     COALESCE(DB_NAME(CAST(B.database_id AS VARCHAR)), 'master') AS [database_name],
-    (CASE WHEN D.name IS NOT NULL THEN 'SQLAgent - TSQL Job (' + D.name + ')' ELSE A.[program_name] END) AS [program_name],
+    (CASE WHEN D.name IS NOT NULL THEN 'SQLAgent - TSQL Job (' + D.[name] + ' - ' + SUBSTRING(A.[program_name], 67, LEN(A.[program_name]) - 67) +  ')' ELSE A.[program_name] END) AS [program_name],
     COALESCE(B.start_time, A.last_request_end_time) AS start_time,
     A.login_time,
     COALESCE(B.request_id, 0) AS request_id,
@@ -65,15 +65,13 @@ FROM
         SELECT
             session_id, 
             wait_type, 
-            MAX(resource_description) AS resource_description
+            resource_description,
+			ROW_NUMBER() OVER(PARTITION BY session_id ORDER BY (CASE WHEN wait_type LIKE 'PAGEIO%' THEN 1 ELSE 0 END), wait_duration_ms DESC) AS Ranking
         FROM 
             sys.dm_os_waiting_tasks
         WHERE
             resource_description IS NOT NULL
-        GROUP BY 
-            session_id, 
-            wait_type
-    ) E ON A.session_id = E.session_id
+    ) E ON A.session_id = E.session_id AND E.Ranking = 1
     LEFT JOIN (
         SELECT
             session_id,
