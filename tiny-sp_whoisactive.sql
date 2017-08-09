@@ -32,6 +32,7 @@ SELECT
     FORMAT(COALESCE(B.granted_query_memory, 0), '###,###,###,###,###,###,###,##0') AS used_memory,
     NULLIF(B.blocking_session_id, 0) AS blocking_session_id,
     COALESCE(G.blocked_session_count, 0) AS blocked_session_count,
+    'KILL ' + CAST(A.session_id AS VARCHAR(10)) AS kill_command,
     (CASE 
         WHEN B.[deadlock_priority] <= -5 THEN 'Low'
         WHEN B.[deadlock_priority] > -5 AND B.[deadlock_priority] < 5 AND B.[deadlock_priority] < 5 THEN 'Normal'
@@ -65,9 +66,9 @@ FROM
         SELECT
             session_id, 
             wait_type,
-			wait_duration_ms,
+	    wait_duration_ms,
             resource_description,
-			ROW_NUMBER() OVER(PARTITION BY session_id ORDER BY (CASE WHEN wait_type LIKE 'PAGEIO%' THEN 0 ELSE 1 END), wait_duration_ms DESC) AS Ranking
+	    ROW_NUMBER() OVER(PARTITION BY session_id ORDER BY (CASE WHEN wait_type LIKE 'PAGEIO%' THEN 0 ELSE 1 END), wait_duration_ms DESC) AS Ranking
         FROM 
             sys.dm_os_waiting_tasks
     ) E ON A.session_id = E.session_id AND E.Ranking = 1
