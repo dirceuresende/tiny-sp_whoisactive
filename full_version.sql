@@ -96,7 +96,7 @@ FROM
             blocking_session_id
     ) G ON A.session_id = G.blocking_session_id
     OUTER APPLY sys.dm_exec_sql_text(COALESCE(B.[sql_handle], C.most_recent_sql_handle)) AS X
-    OUTER APPLY sys.dm_exec_query_plan(COALESCE(B.[sql_handle], C.most_recent_sql_handle)) AS W
+    OUTER APPLY sys.dm_exec_query_plan(B.[plan_handle]) AS W
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
