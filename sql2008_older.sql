@@ -26,12 +26,12 @@ SELECT
     COALESCE(B.cpu_time, 0) AS CPU,
     COALESCE(F.tempdb_allocations, 0) AS tempdb_allocations,
     COALESCE((CASE WHEN F.tempdb_allocations > F.tempdb_current THEN F.tempdb_allocations - F.tempdb_current ELSE 0 END), 0) AS tempdb_current,
-	COALESCE(B.logical_reads, 0) AS reads,
+    COALESCE(B.logical_reads, 0) AS reads,
     COALESCE(B.writes, 0) AS writes,
     COALESCE(B.reads, 0) AS physical_reads,
     COALESCE(B.granted_query_memory, 0) AS used_memory,
     NULLIF(B.blocking_session_id, 0) AS blocking_session_id,
-	COALESCE(G.blocked_session_count, 0) AS blocked_session_count,
+    COALESCE(G.blocked_session_count, 0) AS blocked_session_count,
     'KILL ' + CAST(A.session_id AS VARCHAR(10)) AS kill_command,
     (CASE 
         WHEN B.[deadlock_priority] <= -5 THEN 'Low'
@@ -39,7 +39,7 @@ SELECT
         WHEN B.[deadlock_priority] >= 5 THEN 'High'
     END) + ' (' + CAST(B.[deadlock_priority] AS VARCHAR(3)) + ')' AS [deadlock_priority],
     B.row_count,
-	B.open_transaction_count,
+    B.open_transaction_count,
     (CASE B.transaction_isolation_level
         WHEN 0 THEN 'Unspecified' 
         WHEN 1 THEN 'ReadUncommitted' 
@@ -65,9 +65,9 @@ FROM
         SELECT
             session_id, 
             wait_type,
-			wait_duration_ms,
+            wait_duration_ms,
             resource_description,
-			ROW_NUMBER() OVER(PARTITION BY session_id ORDER BY (CASE WHEN wait_type LIKE 'PAGEIO%' THEN 0 ELSE 1 END), wait_duration_ms) AS Ranking
+            ROW_NUMBER() OVER(PARTITION BY session_id ORDER BY (CASE WHEN wait_type LIKE 'PAGEIO%' THEN 0 ELSE 1 END), wait_duration_ms) AS Ranking
         FROM 
             sys.dm_os_waiting_tasks
     ) E ON A.session_id = E.session_id AND E.Ranking = 1
@@ -83,7 +83,7 @@ FROM
             session_id,
             request_id
     ) F ON B.session_id = F.session_id AND B.request_id = F.request_id
-	LEFT JOIN (
+    LEFT JOIN (
         SELECT 
             blocking_session_id,
             COUNT(*) AS blocked_session_count
@@ -95,7 +95,7 @@ FROM
             blocking_session_id
     ) G ON A.session_id = G.blocking_session_id
     OUTER APPLY sys.dm_exec_sql_text(COALESCE(B.[sql_handle], C.most_recent_sql_handle)) AS X
-	OUTER APPLY sys.dm_exec_query_plan(B.[plan_handle]) AS W
+    OUTER APPLY sys.dm_exec_query_plan(B.[plan_handle]) AS W
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
