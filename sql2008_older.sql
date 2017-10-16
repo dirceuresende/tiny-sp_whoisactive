@@ -26,7 +26,7 @@ SELECT
     COALESCE(B.cpu_time, 0) AS CPU,
     COALESCE(F.tempdb_allocations, 0) AS tempdb_allocations,
     COALESCE((CASE WHEN F.tempdb_allocations > F.tempdb_current THEN F.tempdb_allocations - F.tempdb_current ELSE 0 END), 0) AS tempdb_current,
-    COALESCE(B.logical_reads, 0) AS reads,
+	COALESCE(B.logical_reads, 0) AS reads,
     COALESCE(B.writes, 0) AS writes,
     COALESCE(B.reads, 0) AS physical_reads,
     COALESCE(B.granted_query_memory, 0) AS used_memory,
@@ -38,6 +38,7 @@ SELECT
         WHEN B.[deadlock_priority] >= 5 THEN 'High'
     END) + ' (' + CAST(B.[deadlock_priority] AS VARCHAR(3)) + ')' AS [deadlock_priority],
     B.row_count,
+	B.open_transaction_count,
     (CASE B.transaction_isolation_level
         WHEN 0 THEN 'Unspecified' 
         WHEN 1 THEN 'ReadUncommitted' 
@@ -53,7 +54,8 @@ SELECT
     A.[program_name],
     COALESCE(B.start_time, A.last_request_end_time) AS start_time,
     A.login_time,
-    COALESCE(B.request_id, 0) AS request_id
+    COALESCE(B.request_id, 0) AS request_id,
+    W.query_plan
 FROM
     sys.dm_exec_sessions AS A WITH (NOLOCK)
     LEFT JOIN sys.dm_exec_requests AS B WITH (NOLOCK) ON A.session_id = B.session_id
@@ -81,6 +83,7 @@ FROM
             request_id
     ) F ON B.session_id = F.session_id AND B.request_id = F.request_id
     OUTER APPLY sys.dm_exec_sql_text(COALESCE(B.[sql_handle], C.most_recent_sql_handle)) AS X
+	OUTER APPLY sys.dm_exec_query_plan(B.[plan_handle]) AS W
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
