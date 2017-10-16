@@ -31,6 +31,7 @@ SELECT
     COALESCE(B.reads, 0) AS physical_reads,
     COALESCE(B.granted_query_memory, 0) AS used_memory,
     NULLIF(B.blocking_session_id, 0) AS blocking_session_id,
+	COALESCE(G.blocked_session_count, 0) AS blocked_session_count,
     'KILL ' + CAST(A.session_id AS VARCHAR(10)) AS kill_command,
     (CASE 
         WHEN B.[deadlock_priority] <= -5 THEN 'Low'
@@ -82,9 +83,21 @@ FROM
             session_id,
             request_id
     ) F ON B.session_id = F.session_id AND B.request_id = F.request_id
+	LEFT JOIN (
+        SELECT 
+            blocking_session_id,
+            COUNT(*) AS blocked_session_count
+        FROM 
+            sys.dm_exec_requests
+        WHERE 
+            blocking_session_id != 0
+        GROUP BY
+            blocking_session_id
+    ) G ON A.session_id = G.blocking_session_id
     OUTER APPLY sys.dm_exec_sql_text(COALESCE(B.[sql_handle], C.most_recent_sql_handle)) AS X
 	OUTER APPLY sys.dm_exec_query_plan(B.[plan_handle]) AS W
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
     AND (A.[status] != 'sleeping' OR (A.[status] = 'sleeping' AND B.open_transaction_count > 0))
+
