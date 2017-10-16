@@ -84,4 +84,4 @@ FROM
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
-    AND (A.[status] != 'sleeping')
+    AND (A.[status] != 'sleeping' OR (A.[status] = 'sleeping' AND B.open_transaction_count > 0))
