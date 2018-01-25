@@ -1,3 +1,5 @@
+ALTER VIEW dbo.vwWhoIsActive
+AS
 SELECT
     RIGHT('00' + CAST(DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE()) / 86400 AS VARCHAR), 2) + ' ' + 
     RIGHT('00' + CAST((DATEDIFF(SECOND, COALESCE(B.start_time, A.login_time), GETDATE()) / 3600) % 24 AS VARCHAR), 2) + ':' + 
@@ -19,7 +21,7 @@ SELECT
     TRY_CAST('<?query --' + CHAR(10) + X.[text] + CHAR(10) + '--?>' AS XML) AS sql_command,
     A.login_name,
     '(' + CAST(COALESCE(E.wait_duration_ms, B.wait_time) AS VARCHAR(20)) + 'ms)' + COALESCE(E.wait_type, B.wait_type) + COALESCE((CASE 
-        WHEN COALESCE(E.wait_type, B.wait_type) LIKE 'PAGEIOLATCH%' THEN ':' + DB_NAME(LEFT(E.resource_description, CHARINDEX(':', E.resource_description) - 1)) + ':' + SUBSTRING(E.resource_description, CHARINDEX(':', E.resource_description) + 1, 999)
+        WHEN COALESCE(E.wait_type, B.wait_type) LIKE 'PAGE%LATCH%' THEN ':' + DB_NAME(LEFT(E.resource_description, CHARINDEX(':', E.resource_description) - 1)) + ':' + SUBSTRING(E.resource_description, CHARINDEX(':', E.resource_description) + 1, 999)
         WHEN COALESCE(E.wait_type, B.wait_type) = 'OLEDB' THEN '[' + REPLACE(REPLACE(E.resource_description, ' (SPID=', ':'), ')', '') + ']'
         ELSE ''
     END), '') AS wait_info,
@@ -32,7 +34,7 @@ SELECT
     FORMAT(COALESCE(B.granted_query_memory, 0), '###,###,###,###,###,###,###,##0') AS used_memory,
     NULLIF(B.blocking_session_id, 0) AS blocking_session_id,
     COALESCE(G.blocked_session_count, 0) AS blocked_session_count,
-    'KILL ' + CAST(A.session_id AS VARCHAR(10)) AS kill_command,
+	'KILL ' + CAST(A.session_id AS VARCHAR(10)) AS kill_command,
     (CASE 
         WHEN B.[deadlock_priority] <= -5 THEN 'Low'
         WHEN B.[deadlock_priority] > -5 AND B.[deadlock_priority] < 5 AND B.[deadlock_priority] < 5 THEN 'Normal'
@@ -53,6 +55,7 @@ SELECT
     A.[host_name],
     COALESCE(DB_NAME(CAST(B.database_id AS VARCHAR)), 'master') AS [database_name],
     (CASE WHEN D.name IS NOT NULL THEN 'SQLAgent - TSQL Job (' + D.[name] + ' - ' + SUBSTRING(A.[program_name], 67, LEN(A.[program_name]) - 67) +  ')' ELSE A.[program_name] END) AS [program_name],
+    H.[name] AS resource_governor_group,
     COALESCE(B.start_time, A.last_request_end_time) AS start_time,
     A.login_time,
     COALESCE(B.request_id, 0) AS request_id,
@@ -66,9 +69,9 @@ FROM
         SELECT
             session_id, 
             wait_type,
-	    wait_duration_ms,
+			wait_duration_ms,
             resource_description,
-	    ROW_NUMBER() OVER(PARTITION BY session_id ORDER BY (CASE WHEN wait_type LIKE 'PAGEIO%' THEN 0 ELSE 1 END), wait_duration_ms DESC) AS Ranking
+			ROW_NUMBER() OVER(PARTITION BY session_id ORDER BY (CASE WHEN wait_type LIKE 'PAGE%LATCH%' THEN 0 ELSE 1 END), wait_duration_ms) AS Ranking
         FROM 
             sys.dm_os_waiting_tasks
     ) E ON A.session_id = E.session_id AND E.Ranking = 1
@@ -96,10 +99,9 @@ FROM
             blocking_session_id
     ) G ON A.session_id = G.blocking_session_id
     OUTER APPLY sys.dm_exec_sql_text(COALESCE(B.[sql_handle], C.most_recent_sql_handle)) AS X
-    OUTER APPLY sys.dm_exec_query_plan(B.[plan_handle]) AS W
+    OUTER APPLY sys.dm_exec_query_plan(B.plan_handle) AS W
+    LEFT JOIN sys.dm_resource_governor_workload_groups H ON A.group_id = H.group_id
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
     AND (A.[status] != 'sleeping' OR (A.[status] = 'sleeping' AND A.open_transaction_count > 0))
-ORDER BY
-    Duration DESC
