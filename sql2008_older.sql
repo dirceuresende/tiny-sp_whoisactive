@@ -53,6 +53,7 @@ SELECT
     A.[host_name],
     COALESCE(DB_NAME(CAST(B.database_id AS VARCHAR)), 'master') AS [database_name],
     A.[program_name],
+    H.[name] AS resource_governor_group,
     COALESCE(B.start_time, A.last_request_end_time) AS start_time,
     A.login_time,
     COALESCE(B.request_id, 0) AS request_id,
@@ -96,6 +97,7 @@ FROM
     ) G ON A.session_id = G.blocking_session_id
     OUTER APPLY sys.dm_exec_sql_text(COALESCE(B.[sql_handle], C.most_recent_sql_handle)) AS X
     OUTER APPLY sys.dm_exec_query_plan(B.[plan_handle]) AS W
+    LEFT JOIN sys.dm_resource_governor_workload_groups H ON A.group_id = H.group_id
 WHERE
     A.session_id > 50
     AND A.session_id <> @@SPID
