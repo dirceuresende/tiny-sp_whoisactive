@@ -50,6 +50,7 @@ SELECT
     A.[status],
     NULLIF(B.percent_complete, 0) AS percent_complete,
     A.[host_name],
+    C.[client_net_address] AS [client_ip_address],
     COALESCE(DB_NAME(CAST(B.database_id AS VARCHAR)), 'master') AS [database_name],
     A.[program_name],
     COALESCE(B.start_time, A.last_request_end_time) AS start_time,
