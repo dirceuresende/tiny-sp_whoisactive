@@ -51,6 +51,7 @@ SELECT
     A.[status],
     NULLIF(B.percent_complete, 0) AS percent_complete,
     A.[host_name],
+    C.[client_net_address] AS [client_ip_address],
     COALESCE(DB_NAME(CAST(B.database_id AS VARCHAR)), 'master') AS [database_name],
     (CASE WHEN D.name IS NOT NULL THEN 'SQLAgent - TSQL Job (' + D.[name] + ' - ' + SUBSTRING(A.[program_name], 67, LEN(A.[program_name]) - 67) +  ')' ELSE A.[program_name] END) AS [program_name],
     H.[name] AS resource_governor_group,
