@@ -92,7 +92,7 @@ FROM
         FROM 
             sys.dm_exec_requests
         WHERE 
-            blocking_session_id != 0
+            blocking_session_id <> 0
         GROUP BY
             blocking_session_id
     ) G ON A.session_id = G.blocking_session_id
